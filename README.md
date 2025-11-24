@@ -19,9 +19,9 @@ A web-based interview practice assistant that allows users to simulate mock inte
 
 ### 1.Create and activate a virtual environment
 python -m venv venv
-# Linux/macOS
+**Linux/macOS**
 source venv/bin/activate
-# Windows
+**Windows**
 venv\Scripts\activate
 ## 2. Install dependencies
 
@@ -66,14 +66,21 @@ By default, the app will be available at http://127.0.0.1:8000/.
 ## Design Decisions
 
 **-In-memory sessions**: Lightweight, simple demo; DB/Redis recommended for production.
+
 **-Curated question banks**: 25 questions per role, random sampling for variety.
+
 **-Fallback evaluator**: Works without OpenAI API.
+
 **-Frontend simplicity**: Minimal dependencies, easy customization.
+
 **-Extensibility**: Easy to add roles, questions, or alternative LLMs.
 
 ## Future Improvements
 
 -Add voice input/output
+
 -Persist sessions for multi-user support
+
 -Analytics dashboard for performance tracking
+
 -Dynamic question generation via GPT models
