@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Interview Practice Partner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            margin:0; padding:0; height:100vh;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #0b0c10; color: #c5c6c7;
+            display:flex;
+        }
+        .sidebar {
+            width: 260px; background: #1f2833; padding:20px; border-right:2px solid #45a29e;
+        }
+        .sidebar h3 { color: #66fcf1; margin:0 0 12px 0; }
+        label { display:block; margin-top:12px; font-size:14px; }
+        select, input[type=number] {
+            width:100%; padding:10px; margin-top:6px; border-radius:6px; border:none; background:#0b0c10; color:#c5c6c7;
+        }
+        button {
+            width:100%; padding:10px; margin-top:16px; border-radius:6px; border:none; background:#45a29e; color:#0b0c10; cursor:pointer;
+        }
+        button:hover { background:#66fcf1; }
+
+        .main {
+            flex:1; padding:28px; display:flex; flex-direction:column;
+        }
+        .title { text-align:center; color:#66fcf1; font-size:20px; margin-bottom:12px; }
+        #chatBox {
+            flex:1; background:#0b0c10; border:1px solid #45a29e; padding:14px; border-radius:10px; overflow:auto;
+        }
+        .msg { margin:8px 0; padding:10px; border-radius:8px; max-width:80%; }
+        .msg.user { background:#111; color:#c5c6c7; margin-left:auto; text-align:right; }
+        .msg.bot { background:#092; color:#0b0c10; background:#142; color:#c7ffee; margin-right:auto; text-align:left; }
+        .controls { display:flex; gap:8px; margin-top:12px; }
+        .controls input[type=text] { flex:1; padding:12px; border-radius:6px; border:none; background:#1f2833; color:#c5c6c7; }
+        .controls button { padding:10px 16px; border-radius:6px; border:none; background:#45a29e; color:#0b0c10; cursor:pointer; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>Interview Setup</h3>
+        <label for="role">Role</label>
+        <select id="role">
+            <option>Java Developer</option>
+            <option>Software Engineer</option>
+            <option>Data Analyst</option>
+            <option>Python Developer</option>
+            <option>Web Developer</option>
+        </select>
+
+        <label for="num">Number of Questions (1-10)</label>
+        <input id="num" type="number" min="1" max="10" value="5" />
+
+        <button id="startBtn">Start Interview</button>
+
+        <hr style="margin-top:18px;border:0;border-top:1px solid #223;">
+        <div style="font-size:13px;color:#9fb8b0;margin-top:10px;">
+            <strong>Tip:</strong> Give concise answers. The bot will tell you if your answer is correct and show a simple correction when needed.
+        </div>
+        <div style="margin-top:8px;color:#9fb8b0;font-size:12px;">
+            Image: <br/><small style="color:#7fbeb0">local demo image shown to developer</small>
+            <div style="margin-top:8px;">
+                <img src="/static/placeholder.png" alt="placeholder" style="width:100%; border-radius:6px; opacity:0.9;">
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="title">💬 Interview Practice Partner</div>
+
+        <div id="chatBox"></div>
+
+        <div class="controls">
+            <input id="answerInput" type="text" placeholder="Type your answer here..." />
+            <button id="sendBtn">Send</button>
+        </div>
+
+        <div style="margin-top:8px; font-size:13px; color:#99bfb6">
+            <span id="sessionInfo"></span>
+        </div>
+    </div>
+
+<script>
+let sessionId = null;
+let currentQuestion = null;
+
+function appendUser(text) {
+    const box = document.getElementById('chatBox');
+    const div = document.createElement('div');
+    div.className = 'msg user';
+    div.innerHTML = `<strong>You:</strong> ${escapeHtml(text)}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+
+function appendBot(text) {
+    const box = document.getElementById('chatBox');
+    const div = document.createElement('div');
+    div.className = 'msg bot';
+    div.innerHTML = `<strong>Bot:</strong> ${escapeHtml(text)}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+         .replaceAll('&', '&amp;')
+         .replaceAll('<', '&lt;')
+         .replaceAll('>', '&gt;');
+}
+
+document.getElementById('startBtn').addEventListener('click', async () => {
+    const role = document.getElementById('role').value;
+    const num = parseInt(document.getElementById('num').value) || 5;
+    document.getElementById('chatBox').innerHTML = '';
+    appendBot(`Starting interview for ${role} (${num} questions)...`);
+
+    const res = await fetch('/start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ role: role, num_questions: num })
+    });
+    const data = await res.json();
+    sessionId = data.session_id;
+    currentQuestion = data.question;
+    document.getElementById('sessionInfo').textContent = `Session: ${sessionId}`;
+    appendBot(currentQuestion);
+});
+
+document.getElementById('sendBtn').addEventListener('click', async () => {
+    const val = document.getElementById('answerInput').value.trim();
+    if (!val || !sessionId) return;
+    appendUser(val);
+    document.getElementById('answerInput').value = '';
+    appendBot('Checking answer...');
+    try {
+        const res = await fetch('/answer', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ session_id: sessionId, user_answer: val })
+        });
+        const data = await res.json();
+        const box = document.getElementById('chatBox');
+        let nodes = box.querySelectorAll('.msg.bot');
+        if (nodes.length) {
+            let last = nodes[nodes.length - 1];
+            if (last && last.textContent.includes('Checking answer')) {
+                last.remove();
+            }
+        }
+
+        appendBot(`Verdict: ${data.verdict}`);
+        if (data.feedback) appendBot(`Feedback: ${data.feedback}`);
+        if (data.verdict !== 'Correct' && data.correction) appendBot(`Correction: ${data.correction}`);
+
+        if (data.done) {
+            appendBot("Interview complete.");
+            if (data.summary) appendBot(`Summary: ${data.summary}`);
+            console.log('Interview log:', data.log);
+            sessionId = null;
+            currentQuestion = null;
+            document.getElementById('sessionInfo').textContent = '';
+        } else {
+            currentQuestion = data.next_question;
+            appendBot(currentQuestion);
+        }
+    } catch (err) {
+        appendBot('Error connecting to server.');
+        console.error(err);
+    }
+});
+
+document.getElementById('answerInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('sendBtn').click();
+    }
+});
+</script>
+</body>
+</html>
